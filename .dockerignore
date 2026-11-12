@@ -1,0 +1,13 @@
+**
+!global.json
+!Directory.Build.props
+!src/
+!src/Trading212Mcp.Server/
+!src/Trading212Mcp.Server/**
+**/bin/
+**/obj/
+**/.env*
+**/secrets/
+**/*.pem
+**/*.key
+**/*.pfx
