@@ -38,6 +38,13 @@ ScaffoldingReadMe.txt
 
 # dotenv environment variables file
 .env
+.env.*
+!.env.example
+.tools/
+secrets/
+*.key
+*.pfx
+*.pem
 
 # Others
 ~$*

@@ -1,0 +1,80 @@
+services:
+  trading212:
+    image: ${MCP_IMAGE:?Set MCP_IMAGE to a versioned ARM64 image or digest}
+    platform: linux/arm64
+    user: "10001:10001"
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 30s
+    environment:
+      Trading212__Environment: Live
+      Trading212__ApiKeyFile: /run/secrets/api-key
+      Trading212__ApiSecretFile: /run/secrets/api-secret
+      Mcp__AccessTokenFile: /run/secrets/mcp-token
+      Mcp__AllowedOrigins: https://${MCP_HOST:?Set MCP_HOST}:${HTTPS_PORT:-8443}
+      AllowedHosts: ${MCP_HOST};localhost;127.0.0.1
+      ASPNETCORE_HTTP_PORTS: "8080"
+    volumes:
+      - type: bind
+        source: ${PI_SECRET_DIR:?Set PI_SECRET_DIR to an absolute directory on the Pi}/api-key
+        target: /run/secrets/api-key
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${PI_SECRET_DIR}/api-secret
+        target: /run/secrets/api-secret
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${PI_SECRET_DIR}/mcp-token
+        target: /run/secrets/mcp-token
+        read_only: true
+        bind: {create_host_path: false}
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    networks: [backend]
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+
+  proxy:
+    image: caddy:2.11.2-alpine
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    environment:
+      MCP_HOST: ${MCP_HOST}
+    ports:
+      - "${PI_BIND_IP:?Set PI_BIND_IP to the Pi LAN or VPN IP}:${HTTPS_PORT:-8443}:443"
+    volumes:
+      - type: bind
+        source: ${PI_CONFIG_DIR:?Set PI_CONFIG_DIR to an absolute directory on the Pi}/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${PI_TLS_DIR:?Set PI_TLS_DIR to an absolute directory on the Pi}/server.crt
+        target: /run/tls/server.crt
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${PI_TLS_DIR}/server.key
+        target: /run/tls/server.key
+        read_only: true
+        bind: {create_host_path: false}
+    tmpfs:
+      - /data:rw,noexec,nosuid,size=16m
+      - /config:rw,noexec,nosuid,size=16m
+      - /tmp:rw,noexec,nosuid,size=16m
+    networks: [backend]
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+
+networks:
+  backend:
+    driver: bridge
